@@ -17,7 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+#importing function from views.py 
+from shortener.views import hello_world
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include("shortener.urls"))
+    #path('', include("shortener.urls"))
 ]
