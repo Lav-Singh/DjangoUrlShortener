@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Your Short URL</h2>
+<p><a href="{{ short_url }}">{{ short_url }}</a></p>
+{% if link.access_count is not None %}
+  <p>This link has been used {{ link.access_count }} times.</p>
+{% endif %}
+<a href="{% url 'shorten' %}">Shorten another URL</a>
+{% endblock %}
