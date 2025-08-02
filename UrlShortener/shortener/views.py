@@ -1,29 +1,44 @@
-from django.utils import timezone
-from django.shortcuts import get_object_or_404, render, redirect
+from django.http import JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from .forms import URLForm
-from .models import Link,models
+from .models import Link
 
 def shorten_view(request):
-    form = URLForm(request.POST or None)
-    if request.method == 'POST' and form.is_valid():
-        cd = form.cleaned_data
-        original = cd['original_url']
-        slug = cd['custom_slug'] or None
+    if request.method == 'POST':
+        form = URLForm(request.POST)
+        if form.is_valid():
+            cd = form.cleaned_data
+            link = Link(original_url=cd['original_url'], slug=cd.get('custom_slug') or None)
+            link.save()
+            return redirect('result_view', slug=link.slug)
+    else:
+        form = URLForm()
 
-        if slug:
-            link = Link(original_url=original, slug=slug)
-        else:
-            link = Link(original_url=original)
-        link.save()
-        short_url = request.build_absolute_uri(reverse('redirect_view', args=[link.slug]))
-        return render(request, 'shortener/result.html', {'short_url': short_url, 'link': link})
     return render(request, 'shortener/shorten.html', {'form': form})
+
+
+def result_view(request, slug):
+    link = get_object_or_404(Link, slug=slug)
+    short_url = request.build_absolute_uri(reverse('redirect_view', args=[slug]))
+    return render(request, 'shortener/result.html', {
+        'link': link,
+        'short_url': short_url
+        })
+
 
 def redirect_view(request, slug):
     link = get_object_or_404(Link, slug=slug)
-    #update access count and timestamp
-    link.access_count = models.F('access_count')+1
+    from django.utils import timezone
+    from django.db.models import F
+    link.access_count = F('access_count') + 1
     link.last_accessed = timezone.now()
     link.save(update_fields=['access_count', 'last_accessed'])
     return redirect(link.original_url)
+
+def api_stats(request,slug):
+    link = get_object_or_404(Link, slug = slug)
+    return JsonResponse({
+        'access_count': link.access_count,
+        'last_accessed': link.last_accessed.isoformat() if link.last_accessed else None
+    })
